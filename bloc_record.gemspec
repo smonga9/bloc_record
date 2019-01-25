@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
    s.name          = 'bloc_record'
    s.version       = '0.0.0'
-   s.date          = '2019-22-01'
+   s.date          = '2019-01-22'
    s.summary       = 'BlocRecord ORM'
    s.description   = 'An ActiveRecord-esque ORM adaptor'
    s.authors       = ['Stutay Monga']
