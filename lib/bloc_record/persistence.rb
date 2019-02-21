@@ -82,6 +82,19 @@ module Persistence
        update(nil, updates)
      end
 
+     def destroy(*id)
+       if id.length > 1
+         where_clause = "WHERE id IN (#{id.join(",")});"
+       else
+         where_clause = "WHERE id = #{id.first};"
+       end
+       connection.execute <<-SQL
+         DELETE FROM #{table} #{where_clause}
+       SQL
+
+       true
+     end
+
      def method_missing(method, arg)
 			#test for a dynamic update method
 			if method.match(/update_/)
@@ -99,6 +112,40 @@ module Persistence
      def update_attributes(updates)
        self.class.update(self.id, updates)
      end
+
+     def destroy
+     self.class.destroy(self.id)
+     end
+
+     def destroy_all(condition_params=nil)
+			if condition_params && !condition_params.empty?
+				#test for different argument types passed to the method
+				case condition_params
+				when Hash
+					#convert the hash to strings, make the conditions array and join into single string argument
+					condition_params = BlocRecord::Utility.convert_keys(condition_params)
+					condition_params = condition_params.map do |key, value|
+						"#{key} = #{BlocRecord::Utility.sql_strings(value)}"
+					end
+					condition_params.join(" AND ")
+				when String
+					#return a simple string argument
+					conditions = condition_params
+				when Array
+					#return a joined string argument
+					conditions = condition_params.join(" OR ")
+				end
+				connection.execute <<-SQL
+					DELETE FROM #{table}
+					WHERE #{conditions};
+				SQL
+			#else the params are empty, thus delete all records in the table
+			else
+				connection.execute <<-SQL
+					DELETE FROM #{table};
+				SQL
+			end
+		end
 
    end
 end

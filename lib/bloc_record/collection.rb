@@ -30,5 +30,12 @@ module BlocRecord
 			end
 		end
 
+    def destroy_all
+			self.each do |obj|
+				obj.destroy
+			end
+			true
+		end
+
   end
 end
