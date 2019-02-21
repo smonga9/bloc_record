@@ -112,6 +112,90 @@ require 'sqlite3'
    		end
    	end
 
+    def order(*args)
+    		order_array = []
+    		args.each do |arg|
+    			case arg
+    			when String
+    				order_array.push(arg)
+    			when Symbol
+    				order_array.push(arg.to_s)
+    			when Hash
+    				order_array << arg.map{|key, value| "#{key} #{value}"}
+    			end
+    		end
+    		order_command = order_array.join(",")
+
+    		rows = connection.execute <<-SQL
+    			SELECT * FROM #{table}
+          ORDER BY #{order_command};
+		 SQL
+		 rows_to_array(rows)
+
+	 end
+
+   def join(*args)
+   		if args.count > 1
+   			joins = args.map { |arg| "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id"}.join(" ")
+   			rows = connection.execute <<-SQL
+   				SELECT * FROM #{table} #{joins};
+   			SQL
+   		else
+   			case args.first
+        when String
+      rows = connection.execute <<-SQL
+        SELECT * FROM #{table} #{BlocRecord::Utility.sql_strings(args.first)};
+      SQL
+    when Symbol
+      rows = connection.execute <<-SQL
+        SELECT * FROM #{table}
+        INNER JOIN #{args.first} ON #{arg.first}.#{table}_id = #{table}.id;
+      SQL
+    when Hash
+      #extract the options from the hash
+      second_table = args[0].keys.first
+      third_table = args[0].keys.first
+      rows = connection.execute <<-SQL
+        SELECT * FROM #{table}
+        INNER JOIN #{second_table} ON #{second_table}.#{table}_id = #{table}.id
+				INNER JOIN #{third_table} ON #{third_table}.#{second_table}_id = #{second_table}.id;
+				SQL
+
+			 end
+		 end
+		 rows_to_array(rows)
+	 end
+
+   def find_each(options={})
+   		start = options[:start]
+   		batch_size = options[:batch_size]
+   		# check options for start and batch_size values
+   		if start != nil && batch_size != nil
+   			rows = connection.execute <<-SQL
+   				SELECT #{columns.join ","} FROM #{table}
+   				LIMIT #{batch_size} OFFSET #{start};
+   			SQL
+   		elsif start != nil && batch_size == nil
+   			rows = connection.execute <<-SQL
+   				SELECT #{columns.join ","} FROM #{table}
+   				OFFSET #{start};
+   			SQL
+   		elsif start == nil && batch_size != nil
+   			rows = connection.execute <<-SQL
+   				SELECT #{columns.join ","} FROM #{table}
+   				LIMIT #{batch_size};
+   			SQL
+   		else
+   			rows = connection.execute <<-SQL
+   				SELECT #{columns.join ","} FROM #{table};
+   			SQL
+   		end
+   		rows.each do |row|
+   			yield init_object_from_row(row)
+   		end
+   	end
+
+
    	def find_in_batches(options={}, &block)
    		start = options.has_key?(:start) ? options[:start] : 0
    		batch_size = options.has_key?(:batch_size) ? options[:batch_size] : 100
